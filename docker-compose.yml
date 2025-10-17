@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    container_name: pg-migration-source
+    environment:
+      POSTGRES_DB: migration_source
+      POSTGRES_USER: migrator
+      POSTGRES_PASSWORD: secure_password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
