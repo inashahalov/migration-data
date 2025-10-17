@@ -36,7 +36,7 @@ migration-data/
 ## Локальный анализ БД
 
 
-```markdown
+
 <details>
 <summary><b>1. Подготовка окружения</b></summary>
 
