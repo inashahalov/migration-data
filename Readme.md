@@ -31,7 +31,7 @@ migration-data/
 │   └── pg_ddl_dag.py
 ├── docker-compose.yml    ← для тестовой БД
 └── example.py            ← локальный запуск
-
+```
 ## Как пользоваться 
 ## Локальный анализ БД
 
