@@ -33,7 +33,6 @@ migration-data/
 └── example.py            ← локальный запуск
 ```
 
----
 
 # Система анализа структуры PostgreSQL и генерации DDL для MS SQL
 
