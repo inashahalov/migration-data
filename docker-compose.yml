@@ -3,7 +3,7 @@ version: '3.8'
 
 x-airflow-common:
   &airflow-common
-  image: apache/airflow:2.9.3
+  image: apache/airflow:2.9.3-python3.11
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -96,9 +96,7 @@ services:
           --role Admin \
           --email admin@example.com \
           --password admin
-    environment:
-      <<: *airflow-common-env
-      _PIP_ADDITIONAL_REQUIREMENTS: ''
+
 
 volumes:
   postgres-db-volume:

@@ -28,3 +28,7 @@ class DatabaseInspector(ABC):
     def get_table_size(self, conn, table: str) -> int:
         """Размер таблицы в байтах."""
         pass
+
+    @abstractmethod
+    def get_table_dependencies(self, conn) -> Dict[str, List[str]]:
+        pass

@@ -49,3 +49,25 @@ class PostgresInspector(DatabaseInspector):
         with conn.cursor() as cur:
             cur.execute("SELECT pg_total_relation_size(%s)", (table,))
             return cur.fetchone()[0]
+
+    def get_table_dependencies(self, conn) -> Dict[str, List[str]]:
+        """
+        Возвращает словарь: {таблица: [от каких таблиц зависит]}
+        Например: {"orders": ["users", "products"]}
+        """
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                tc.table_name,
+                ccu.table_name AS foreign_table_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage ccu
+              ON ccu.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+        """)
+        deps = {}
+        for child, parent in cur.fetchall():
+            deps.setdefault(child, []).append(parent)
+        return deps
