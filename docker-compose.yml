@@ -26,6 +26,10 @@ x-airflow-common:
       condition: service_healthy
   networks:
     - app-network
+  # Добавьте build:
+  build:
+    context: .
+    dockerfile: Dockerfile
 
 services:
   postgres-airflow:
@@ -169,3 +173,4 @@ volumes:
   postgres-db-volume:
     labels:
       description: "Volume for Airflow PostgreSQL metadata"
+

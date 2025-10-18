@@ -12,28 +12,6 @@
 Функция проверки доступа  -Реализована в check_read_access() — минимальная проверка: может ли пользователь читать из системных таблиц или хотя бы одну таблицу.?
 
 
-##  Файлы в проекте
-
-```
-migration-data/
-├── database/
-│   ├── __init__.py
-│   ├── inspector.py
-│   ├── registry.py
-│   ├── type_mapping.py
-│   └── dialects/
-│       ├── __init__.py
-│       └── postgres.py
-├── ddl/
-│   ├── __init__.py
-│   └── generator.py
-├── dags/                 ← для Airflow
-│   └── pg_ddl_dag.py
-├── docker-compose.yml    ← для тестовой БД
-└── example.py            ← локальный запуск
-```
-
-
 # Система анализа структуры PostgreSQL и генерации DDL для MS SQL
 
 Инструмент для безопасного и расширяемого анализа метаданных PostgreSQL и автоматической генерации совместимых DDL-скриптов для Microsoft SQL Server. Поддерживает правильную последовательность миграции (справочники → факты) и интеграцию с Apache Airflow.

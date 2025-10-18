@@ -1,1 +1,5 @@
-apache-airflow-providers-microsoft-mssql
+
+# requirements.txt
+apache-airflow-providers-postgres>=5.0.0
+apache-airflow-providers-microsoft-mssql>=4.0.0
+# Добавьте сюда любые другие нужные провайдеры или библиотеки
