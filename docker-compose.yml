@@ -1,4 +1,4 @@
-# docker-compose.yaml
+# docker-compose.yml
 version: '3.8'
 
 x-airflow-common:
@@ -12,7 +12,9 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
-    _PIP_ADDITIONAL_REQUIREMENTS: apache-airflow-providers-postgres apache-airflow-providers-microsoft-mssql
+    _PIP_ADDITIONAL_REQUIREMENTS: >-
+      apache-airflow-providers-postgres
+      apache-airflow-providers-microsoft-mssql
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -22,6 +24,8 @@ x-airflow-common:
     &airflow-common-depends-on
     postgres-airflow:
       condition: service_healthy
+  networks:
+    - app-network
 
 services:
   postgres-airflow:
@@ -34,9 +38,13 @@ services:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
-      interval: 5s
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
     restart: always
+    networks:
+      - app-network
 
   postgres-source:
     image: postgres:15
@@ -45,8 +53,21 @@ services:
       POSTGRES_USER: migrator
       POSTGRES_PASSWORD: secure_password123
     ports:
-      - "5432:5432"
+      - "5433:5432" # Изменён порт хоста, чтобы не конфликтовать с 5432 по умолчанию
     restart: always
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   airflow-webserver:
     <<: *airflow-common
@@ -55,32 +76,53 @@ services:
       - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-      interval: 10s
+      interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 60s
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    networks:
+      - app-network
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    networks:
+      - app-network
 
   airflow-triggerer:
     <<: *airflow-common
     command: triggerer
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    networks:
+      - app-network
 
   airflow-init:
     <<: *airflow-common
@@ -88,15 +130,42 @@ services:
     command:
       - -c
       - |
-        airflow db upgrade
-        airflow users create \
-          --username admin \
-          --firstname Admin \
-          --lastname User \
-          --role Admin \
-          --email admin@example.com \
-          --password admin
+        # Ждём, пока БД станет доступна
+        until airflow db check; do
+          echo "Waiting for DB to become available..."
+          sleep 5
+        done
 
+        # Инициализируем БД
+        airflow db migrate || exit 1
+
+        # Создаём пользователя (если ещё не создан)
+        if ! airflow users list | grep -q admin; then
+          airflow users create \
+            --username admin \
+            --firstname Admin \
+            --lastname User \
+            --role Admin \
+            --email admin@example.com \
+            --password admin
+          echo "Admin user created."
+        else
+          echo "Admin user already exists."
+        fi
+    environment:
+      <<: *airflow-common-env
+      # Отключаем предупреждения о будущих изменениях для init-контейнера
+      PYTHONWARNINGS: "ignore::FutureWarning"
+    # Не используем depends_on здесь, чтобы избежать цикла
+    networks:
+      - app-network
+    restart: on-failure
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres-db-volume:
+    labels:
+      description: "Volume for Airflow PostgreSQL metadata"
